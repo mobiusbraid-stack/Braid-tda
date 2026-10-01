@@ -1,0 +1,86 @@
+/**
+ * @braidmesh/tda — Light, standalone TDA & Vector Space Inspector
+ * Computes pairwise distance matrices, Vietoris-Rips 1-simplices,
+ * and tracks H0/H1 topological loops to detect vector space overlap.
+ */
+class BraidMeshTDA {
+  // 1. Calculate pairwise Euclidean distance matrix for high-dim vectors
+  static distanceMatrix(vectors) {
+    const n = vectors.length;
+    const matrix = Array.from({ length: n }, () => new Float64Array(n));
+
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        let sum = 0;
+        for (let d = 0; d < vectors[i].length; d++) {
+          const diff = vectors[i][d] - vectors[j][d];
+          sum += diff * diff;
+        }
+        const dist = Math.sqrt(sum);
+        matrix[i][j] = dist;
+        matrix[j][i] = dist;
+      }
+    }
+    return matrix;
+  }
+
+  // 2. Scan vector embeddings for topological traps (H1 loops causing hallucinations)
+  static inspectEmbeddingSpace(vectors, epsilonThreshold = 0.45) {
+    const start = performance.now();
+    const dists = this.distanceMatrix(vectors);
+    const n = vectors.length;
+
+    let edgeCount = 0;
+    const adjacency = Array.from({ length: n }, () => []);
+
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        if (dists[i][j] <= epsilonThreshold) {
+          adjacency[i].push(j);
+          adjacency[j].push(i);
+          edgeCount++;
+        }
+      }
+    }
+
+    // Estimate Betti-0 (connected components) via BFS
+    const visited = new Array(n).fill(false);
+    let betti0 = 0;
+
+    for (let i = 0; i < n; i++) {
+      if (!visited[i]) {
+        betti0++;
+        const queue = [i];
+        visited[i] = true;
+        while (queue.length > 0) {
+          const curr = queue.shift();
+          for (const neighbor of adjacency[curr]) {
+            if (!visited[neighbor]) {
+              visited[neighbor] = true;
+              queue.push(neighbor);
+            }
+          }
+        }
+      }
+    }
+
+    // Euler characteristic calculation: Betti-1 ~ Edges - Vertices + Components
+    const estimatedBetti1 = Math.max(0, edgeCount - n + betti0);
+    const elapsedMs = (performance.now() - start).toFixed(2);
+
+    return {
+      vectorCount: n,
+      dimensions: vectors[0] ? vectors[0].length : 0,
+      epsilonThreshold: epsilonThreshold,
+      betti0_clusters: betti0,
+      betti1_loops: estimatedBetti1,
+      hasVectorTraps: estimatedBetti1 > 0,
+      computeTimeMs: parseFloat(elapsedMs)
+    };
+  }
+}
+
+// Export for ES Module / Node environments
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = BraidMeshTDA;
+}
