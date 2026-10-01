@@ -1,0 +1,61 @@
+{
+  "name": "@braidmesh/tda",
+  "version": "1.0.0",
+  "description": "Headless Topological Data Analysis (TDA), H0/H1 Persistent Homology, and Poincaré Disk Hyperbolic Embeddings",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "test": "jest",
+    "bench": "node benchmarks/benchmark_ripser.js",
+    "prepublishOnly": "npm run build && npm run test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/braidmesh/tda.git"
+  },
+  "keywords": [
+    "topological-data-analysis",
+    "tda",
+    "persistent-homology",
+    "vector-embeddings",
+    "vietoris-rips",
+    "poincare-disk",
+    "hyperbolic-geometry",
+    "rag-traps",
+    "legendrian-invariants"
+  ],
+  "author": "Möbius Braid <topologyflux>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/braidmesh/tda/issues"
+  },
+  "homepage": "https://github.com/braidmesh/tda#readme",
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.11.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
