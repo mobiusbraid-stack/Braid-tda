@@ -1,0 +1,118 @@
+import BraidMeshTDA from '../src/index';
+
+describe('BraidMeshTDA Core Library', () => {
+
+  describe('distanceMatrix()', () => {
+    it('should compute symmetric distance matrix correctly for 2D vectors', () => {
+      const vectors = [
+        [0, 0],
+        [3, 0],
+        [0, 4]
+      ];
+
+      const matrix = BraidMeshTDA.distanceMatrix(vectors);
+
+      // Check dimensions
+      expect(matrix.length).toBe(3);
+      expect(matrix[0].length).toBe(3);
+
+      // Check diagonal is zero (distance to self)
+      expect(matrix[0][0]).toBe(0);
+      expect(matrix[1][1]).toBe(0);
+      expect(matrix[2][2]).toBe(0);
+
+      // Check known Euclidean distances
+      // Distance between (0,0) and (3,0) = 3
+      expect(matrix[0][1]).toBeCloseTo(3, 5);
+      expect(matrix[1][0]).toBeCloseTo(3, 5); // Symmetry
+
+      // Distance between (0,0) and (0,4) = 4
+      expect(matrix[0][2]).toBeCloseTo(4, 5);
+      expect(matrix[2][0]).toBeCloseTo(4, 5);
+
+      // Distance between (3,0) and (0,4) = sqrt(3^2 + 4^2) = 5
+      expect(matrix[1][2]).toBeCloseTo(5, 5);
+      expect(matrix[2][1]).toBeCloseTo(5, 5);
+    });
+
+    it('should handle high-dimensional vectors correctly', () => {
+      const dim = 128;
+      const v1 = new Array(dim).fill(0);
+      const v2 = new Array(dim).fill(1); // Distance = sqrt(128 * 1^2)
+
+      const matrix = BraidMeshTDA.distanceMatrix([v1, v2]);
+
+      const expectedDist = Math.sqrt(dim);
+      expect(matrix[0][1]).toBeCloseTo(expectedDist, 5);
+    });
+
+    it('should return an empty matrix for an empty input array', () => {
+      const matrix = BraidMeshTDA.distanceMatrix([]);
+      expect(matrix).toEqual([]);
+    });
+  });
+
+  describe('inspectEmbeddingSpace()', () => {
+    it('should identify isolated components (Betti-0) when threshold is low', () => {
+      // Three clusters spaced far apart
+      const embeddings = [
+        [0, 0],   [0.1, 0.1],   // Cluster 1
+        [10, 10], [10.1, 10.1], // Cluster 2
+        [20, 20], [20.1, 20.1]  // Cluster 3
+      ];
+
+      const report = BraidMeshTDA.inspectEmbeddingSpace(embeddings, 0.5);
+
+      expect(report.vectorCount).toBe(6);
+      expect(report.dimensions).toBe(2);
+      expect(report.betti0_clusters).toBe(3);
+      expect(report.betti1_loops).toBe(0);
+      expect(report.hasVectorTraps).toBe(false);
+      expect(report.computeTimeMs).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should merge clusters when threshold (epsilon) increases', () => {
+      const embeddings = [
+        [0, 0],   [0.1, 0.1],
+        [10, 10], [10.1, 10.1]
+      ];
+
+      // Large threshold connects all points into 1 single cluster
+      const report = BraidMeshTDA.inspectEmbeddingSpace(embeddings, 15.0);
+
+      expect(report.betti0_clusters).toBe(1);
+    });
+
+    it('should detect topological loops (Betti-1 traps) in cyclic vector configurations', () => {
+      // 4 points arranged in a square forming a closed 1D loop
+      // Edges = 4, Vertices = 4, Components = 1 -> Euler Betti-1 estimate > 0
+      const loopEmbeddings = [
+        [0, 0],
+        [1, 0],
+        [1, 1],
+        [0, 1]
+      ];
+
+      // Threshold epsilon = 1.1 connects adjacent corners (dist = 1)
+      // but excludes diagonals (dist = sqrt(2) approx 1.414)
+      const report = BraidMeshTDA.inspectEmbeddingSpace(loopEmbeddings, 1.1);
+
+      expect(report.betti0_clusters).toBe(1);
+      expect(report.betti1_loops).toBeGreaterThan(0);
+      expect(report.hasVectorTraps).toBe(true);
+    });
+
+    it('should safely handle single vector inputs', () => {
+      const singleVector = [[1, 2, 3, 4]];
+
+      const report = BraidMeshTDA.inspectEmbeddingSpace(singleVector, 1.0);
+
+      expect(report.vectorCount).toBe(1);
+      expect(report.dimensions).toBe(4);
+      expect(report.betti0_clusters).toBe(1);
+      expect(report.betti1_loops).toBe(0);
+      expect(report.hasVectorTraps).toBe(false);
+    });
+  });
+
+});
